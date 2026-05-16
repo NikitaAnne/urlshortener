@@ -3,6 +3,7 @@ package com.nikita.urlshortener.impl;
 import com.nikita.urlshortener.dto.UrlRequestDto;
 import com.nikita.urlshortener.dto.UrlResponseDto;
 import com.nikita.urlshortener.entity.UrlMapping;
+import com.nikita.urlshortener.exception.ResourceNotFoundException;
 import com.nikita.urlshortener.repository.UrlRepository;
 import com.nikita.urlshortener.service.UrlService;
 import com.nikita.urlshortener.util.ShortUrlGenerator;
@@ -17,7 +18,7 @@ public class UrlServiceImpl implements UrlService {
     private final UrlRepository urlRepository;
 
     @Override
-    public UrlResponseDto shortenUrl(UrlRequestDto requestDto){
+    public UrlResponseDto shortenUrl(UrlRequestDto requestDto) {
 
         String shortCode = ShortUrlGenerator.shortCodeGenerator();
 
@@ -30,9 +31,24 @@ public class UrlServiceImpl implements UrlService {
 
         urlRepository.save(urlMapping);
 
-        String shortUrl = "http://localhost:8080/" + shortCode;
+        String shortUrl = "http://localhost:8080/api/v1/url/" + shortCode;
 
         return new UrlResponseDto(shortUrl);
 
+    }
+
+    @Override
+    public String getOriginalUrl(String shortCode) {
+
+        UrlMapping urlMapping = urlRepository
+                .findByShortCode(shortCode)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Short URL not found"));
+
+        urlMapping.setClickCount(urlMapping.getClickCount() + 1);
+
+        urlRepository.save(urlMapping);
+
+        return urlMapping.getOriginalUrl();
     }
 }
