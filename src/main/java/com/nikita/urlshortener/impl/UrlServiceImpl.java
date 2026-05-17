@@ -8,6 +8,7 @@ import com.nikita.urlshortener.repository.UrlRepository;
 import com.nikita.urlshortener.service.UrlService;
 import com.nikita.urlshortener.util.ShortUrlGenerator;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -16,6 +17,8 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 public class UrlServiceImpl implements UrlService {
     private final UrlRepository urlRepository;
+
+    private final StringRedisTemplate redisTemplate;
 
     @Override
     public UrlResponseDto shortenUrl(UrlRequestDto requestDto) {
@@ -40,15 +43,37 @@ public class UrlServiceImpl implements UrlService {
     @Override
     public String getOriginalUrl(String shortCode) {
 
+        String cachedUrl = redisTemplate.opsForValue().get(shortCode);
+
+        if (cachedUrl != null) {
+
+            UrlMapping cachedMapping = urlRepository
+                    .findByShortCode(shortCode)
+                    .orElseThrow(() ->
+                            new ResourceNotFoundException("Short URL not found"));
+
+            cachedMapping.setClickCount(
+                    cachedMapping.getClickCount() + 1);
+
+            urlRepository.save(cachedMapping);
+
+            return cachedUrl;
+        }
+
         UrlMapping urlMapping = urlRepository
                 .findByShortCode(shortCode)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Short URL not found"));
 
-        urlMapping.setClickCount(urlMapping.getClickCount() + 1);
+        redisTemplate.opsForValue()
+                .set(shortCode, urlMapping.getOriginalUrl());
+
+        urlMapping.setClickCount(
+                urlMapping.getClickCount() + 1);
 
         urlRepository.save(urlMapping);
 
         return urlMapping.getOriginalUrl();
     }
+
 }
