@@ -24,4 +24,20 @@ public class GlobalExceptionHandler {
                 HttpStatus.INTERNAL_SERVER_ERROR
         );
     }
+
+    @ExceptionHandler(ExpiredUrlException.class)
+    public ResponseEntity<ErrorResponse> handleExpiredUrlException(
+            ExpiredUrlException ex) {
+
+        ErrorResponse errorResponse = new ErrorResponse(
+                ex.getMessage(),
+                HttpStatus.GONE.value(),
+                LocalDateTime.now()
+        );
+
+        return new ResponseEntity<>(
+                errorResponse,
+                HttpStatus.GONE
+        );
+    }
 }

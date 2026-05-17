@@ -3,6 +3,7 @@ package com.nikita.urlshortener.impl;
 import com.nikita.urlshortener.dto.UrlRequestDto;
 import com.nikita.urlshortener.dto.UrlResponseDto;
 import com.nikita.urlshortener.entity.UrlMapping;
+import com.nikita.urlshortener.exception.ExpiredUrlException;
 import com.nikita.urlshortener.exception.ResourceNotFoundException;
 import com.nikita.urlshortener.repository.UrlRepository;
 import com.nikita.urlshortener.service.UrlService;
@@ -29,6 +30,7 @@ public class UrlServiceImpl implements UrlService {
                 .originalUrl(requestDto.getOriginalUrl())
                 .shortCode(shortCode)
                 .createdAt(LocalDateTime.now())
+                .expiresAt(LocalDateTime.now().plusDays(7))
                 .clickCount(0L)
                 .build();
 
@@ -64,6 +66,11 @@ public class UrlServiceImpl implements UrlService {
                 .findByShortCode(shortCode)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Short URL not found"));
+        if (urlMapping.getExpiresAt() != null &&
+                urlMapping.getExpiresAt().isBefore(LocalDateTime.now())) {
+
+            throw new ExpiredUrlException("Short URL has expired");
+        }
 
         redisTemplate.opsForValue()
                 .set(shortCode, urlMapping.getOriginalUrl());
